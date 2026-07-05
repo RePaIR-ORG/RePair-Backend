@@ -70,8 +70,10 @@ Currently, the API supports authentication functionality for Specialists.
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
+| `GET`  | `/api/health` | Check for status of server | Public |
 | `POST` | `/api/auth/register` | Register a new specialist | Public |
 | `POST` | `/api/auth/login` | Authenticate specialist & get token | Public |
+| `GET`  | `/api/auth/me` | Get current user's full profile | Private (Token required) |
 
 *(More endpoints for Student Management and Task Assignment are under development.)*
 
@@ -120,6 +122,9 @@ MONGO_URI=mongodb://localhost:27017/repair
 
 # JWT Secret for Auth tokens
 JWT_SECRET=your_jwt_secret_key_here
+
+# Frontend URL for CORS
+FRONTEND_URL=http://localhost:5173
 ```
 
 > **⚠️ Important:** Never commit your `.env` file to version control.
@@ -155,8 +160,13 @@ RePair-Backend/
 ├── routes/               # API route definitions
 │   └── auth.js           # Auth-related routing
 │
+├── middleware/           # Express middleware
+│   └── authMiddleware.js # JWT verification logic
+│
 ├── .env                  # Local environment variables (DO NOT COMMIT)
 ├── .env.example          # Environment variable template
+├── .dockerignore         # Exclusions for Docker builds
+├── Dockerfile            # Production-ready Docker configuration
 ├── index.js              # Application entry point and express setup
 ├── package.json          # Project metadata and dependencies
 └── package-lock.json     # Locked dependency versions
