@@ -1,5 +1,5 @@
 import express from 'express';
-import { addStudent, getStudents } from '../controllers/studentController.js';
+import { addStudent, getStudents, getStudentById } from '../controllers/studentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -13,5 +13,10 @@ router.post('/', protect, addStudent);
 // @desc    Get all students with pagination
 // @access  Private
 router.get('/', protect, getStudents);
+
+// @route   GET /api/students/:id
+// @desc    Get a single student's full profile
+// @access  Private
+router.get('/:id', protect, getStudentById);
 
 export default router;

@@ -91,3 +91,30 @@ export const getStudents = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching students.' });
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   GET /api/students/:id
+// @desc    Get a single student by ID (must belong to the authenticated specialist)
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+export const getStudentById = async (req, res) => {
+  try {
+    const student = await Student.findOne({
+      _id: req.params.id,
+      specialist: req.user.id, // ownership check — prevents cross-specialist access
+    }).lean();
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    res.status(200).json({ student });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid student ID.' });
+    }
+    console.error('getStudentById error:', error);
+    res.status(500).json({ message: 'Server error while fetching student.' });
+  }
+};
+
