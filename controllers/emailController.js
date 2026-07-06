@@ -78,6 +78,11 @@ const buildOtpEmail = (otp) => `
  * @desc    Generate OTP, save to DB, and send HTML email to the user
  * @access  Public
  * @body    { email: string }
+ *
+ * Idempotent within a 50-second window: if an OTP was already generated
+ * for this email in the last 50 s, we do NOT generate a new one.
+ * This prevents React StrictMode's double-invoke from overwriting the OTP
+ * that the first email was sent with.
  */
 export const sendOtp = async (req, res) => {
   const { email } = req.body;
@@ -87,11 +92,24 @@ export const sendOtp = async (req, res) => {
   }
 
   try {
-    const otp = generateOtp();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // Upsert: remove any existing OTP for this email and save the new one
-    await Otp.findOneAndDelete({ email: email.toLowerCase() });
-    await Otp.create({ email: email.toLowerCase(), otp });
+    // ── Idempotency guard ────────────────────────────────────────────────────
+    // If an OTP was created in the last 50 seconds, reuse it (don't re-send).
+    const existing = await Otp.findOne({ email: normalizedEmail });
+    if (existing) {
+      const ageSeconds = (Date.now() - new Date(existing.createdAt).getTime()) / 1000;
+      if (ageSeconds < 50) {
+        return res.status(200).json({
+          message: 'OTP already sent. Please check your inbox.',
+        });
+      }
+    }
+
+    // ── Generate and persist a fresh OTP ────────────────────────────────────
+    const otp = generateOtp();
+    await Otp.findOneAndDelete({ email: normalizedEmail });
+    await Otp.create({ email: normalizedEmail, otp });
 
     const mailOptions = {
       from: `"RePair Platform" <${process.env.EMAIL_USER}>`,
@@ -108,6 +126,7 @@ export const sendOtp = async (req, res) => {
     res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
   }
 };
+
 
 /**
  * @route   POST /api/auth/verify-otp
