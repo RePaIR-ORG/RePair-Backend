@@ -1,6 +1,7 @@
 import express from 'express';
 import { register, login, getMe } from '../controllers/authController.js';
 import { uploadProfilePhoto } from '../controllers/uploadController.js';
+import { sendOtp, verifyOtp } from '../controllers/emailController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 
@@ -32,5 +33,15 @@ router.get('/me', protect, getMe);
 // @desc    Upload or replace the specialist's profile photo
 // @access  Private
 router.post('/upload-photo', protect, upload.single('photo'), uploadProfilePhoto);
+
+// @route   POST /api/auth/send-otp
+// @desc    Generate and email a 6-digit OTP to the given address
+// @access  Public
+router.post('/send-otp', sendOtp);
+
+// @route   POST /api/auth/verify-otp
+// @desc    Validate the submitted OTP against the DB record
+// @access  Public
+router.post('/verify-otp', verifyOtp);
 
 export default router;

@@ -9,9 +9,11 @@ const UserSchema = new mongoose.Schema({
   experience: { type: Number },
   serviceDomain: { type: String },
   focusAreas: [{ type: String }],
-  profileUrl: { type: String, default: null }
+  profileUrl: { type: String, default: null },
+  isEmailVerified: { type: Boolean, default: false },
 }, {
   timestamps: true
 });
 
 export default mongoose.model('User', UserSchema);
+
