@@ -118,3 +118,45 @@ export const getStudentById = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   PATCH /api/students/:id/assessment
+// @desc    Save assessment result for a student (marks status as completed)
+// @body    { assessmentType, assessmentScore, assessmentSeverity }
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+export const saveAssessmentResult = async (req, res) => {
+  try {
+    const { assessmentType, assessmentScore, assessmentSeverity } = req.body;
+
+    if (!assessmentType || assessmentScore === undefined || !assessmentSeverity) {
+      return res.status(400).json({
+        message: 'assessmentType, assessmentScore, and assessmentSeverity are required.',
+      });
+    }
+
+    const student = await Student.findOneAndUpdate(
+      { _id: req.params.id, specialist: req.user.id }, // ownership check
+      {
+        assessmentStatus:   'completed',
+        assessmentType,
+        assessmentScore:    Number(assessmentScore),
+        assessmentSeverity,
+        assessmentTakenAt:  new Date(),
+      },
+      { new: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    res.status(200).json({ message: 'Assessment result saved.', student });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid student ID.' });
+    }
+    console.error('saveAssessmentResult error:', error);
+    res.status(500).json({ message: 'Server error while saving assessment result.' });
+  }
+};
+

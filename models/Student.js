@@ -24,6 +24,12 @@ const StudentSchema = new mongoose.Schema(
       default: 'pending',
     },
 
+    // Assessment result details (populated when assessmentStatus = 'completed')
+    assessmentType:     { type: String, default: '' },       // e.g. 'ISAA'
+    assessmentScore:    { type: Number, default: null },      // total numeric score
+    assessmentSeverity: { type: String, default: '' },        // e.g. 'Mild Autism'
+    assessmentTakenAt:  { type: Date,   default: null },      // timestamp of completion
+
     // ── Progress / Tracking (mirrors the old hard-coded shape) ─────────
     mood: { type: String, default: '' },
     taskCompletion: { type: String, default: '0%' }, // stored as "72%"
