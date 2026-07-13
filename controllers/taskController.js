@@ -59,15 +59,15 @@ export const getTasks = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @route   POST /api/students/:studentId/tasks
-// @desc    Assign a new task to a student
-// @body    multipart/form-data: { title, description?, status?, image? (file) }
+// @desc    Assign a new task to a student (status always starts as 'Pending')
+// @body    multipart/form-data: { title, description?, image? (file) }
 // @access  Private
 // ─────────────────────────────────────────────────────────────────────────────
 export const createTask = async (req, res) => {
   try {
     await resolveStudent(req.params.studentId, req.user.id);
 
-    const { title, description, status } = req.body;
+    const { title, description } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ message: 'title is required.' });
@@ -80,7 +80,7 @@ export const createTask = async (req, res) => {
       title: title.trim(),
       description: description?.trim() || '',
       imageUrl,
-      status: status || 'Pending',
+      // status intentionally omitted — defaults to 'Pending' via schema
       student: req.params.studentId,
       specialist: req.user.id,
     });
@@ -99,20 +99,20 @@ export const createTask = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @route   PATCH /api/students/:studentId/tasks/:taskId
-// @desc    Update a task (title, description, status, image)
-// @body    multipart/form-data: { title?, description?, status?, image? (file) }
+// @desc    Update a task (title, description, image) — status is student-only
+// @body    multipart/form-data: { title?, description?, image? (file) }
 // @access  Private
 // ─────────────────────────────────────────────────────────────────────────────
 export const updateTask = async (req, res) => {
   try {
     await resolveStudent(req.params.studentId, req.user.id);
 
-    const { title, description, status } = req.body;
+    const { title, description } = req.body;
 
     const updates = {};
     if (title !== undefined)       updates.title = title.trim();
     if (description !== undefined) updates.description = description.trim();
-    if (status !== undefined)      updates.status = status;
+    // status is explicitly excluded — only the student app can change task status
 
     // If a new image file was uploaded, replace the URL
     if (req.file) updates.imageUrl = req.file.path;
