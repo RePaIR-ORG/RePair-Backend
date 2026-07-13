@@ -20,6 +20,13 @@ const TaskSchema = new mongoose.Schema(
       default: 'Pending',
     },
 
+    // ── Student Mood ───────────────────────────────────────────────────
+    mood: {
+      type: String,
+      default: '',
+    },
+
+
     // ── Relations ──────────────────────────────────────────────────────
     // The student this task belongs to
     student: {

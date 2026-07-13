@@ -1,4 +1,5 @@
 import Student from '../models/Student.js';
+import Task from '../models/Task.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -77,5 +78,38 @@ export const getStudentMe = async (req, res) => {
   } catch (error) {
     console.error('getStudentMe error:', error);
     res.status(500).json({ message: 'Server error while fetching student profile.' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   GET /api/student-auth/tasks?mood=happy
+// @desc    Return tasks assigned to the authenticated student.
+//          Pass ?mood=happy|sad|angry|tired to filter to tasks tagged with
+//          that mood; omit the query param to get ALL tasks.
+// @access  Private (student JWT required)
+// ─────────────────────────────────────────────────────────────────────────────
+export const getStudentTasks = async (req, res) => {
+  try {
+    const studentId = req.student.id;
+
+    const filter = { student: studentId };
+
+    const tasks1 = await Task.find({ student: studentId });
+    console.log("All tasks for student:", tasks1);
+
+    // Filter by mood when the child selects one
+    if (req.query.mood) {
+      filter.mood = req.query.mood.toLowerCase();
+    }
+
+    const tasks = await Task.find(filter)
+      .select('title description imageUrl status mood createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ tasks });
+  } catch (error) {
+    console.error('getStudentTasks error:', error);
+    res.status(500).json({ message: 'Server error while fetching tasks.' });
   }
 };

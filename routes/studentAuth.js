@@ -1,17 +1,14 @@
 import express from 'express';
-import { studentLogin, getStudentMe } from '../controllers/studentAuthController.js';
+import { studentLogin, getStudentMe, getStudentTasks } from '../controllers/studentAuthController.js';
 import { protectStudent } from '../middleware/studentAuthMiddleware.js';
 
 const router = express.Router();
 
-// @route   POST /api/student-auth/login
-// @desc    Login a student and receive a 30-day JWT
-// @access  Public
+// Public routes
 router.post('/login', studentLogin);
 
-// @route   GET /api/student-auth/me
-// @desc    Get the authenticated student's profile
-// @access  Private (student JWT)
+// Protected routes (student JWT required)
 router.get('/me', protectStudent, getStudentMe);
+router.get('/tasks', protectStudent, getStudentTasks);
 
 export default router;
