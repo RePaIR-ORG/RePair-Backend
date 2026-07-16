@@ -5,6 +5,7 @@ import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import studentRoutes from './routes/students.js';
 import studentAuthRoutes from './routes/studentAuth.js';
+import specialistRoutes from './routes/specialist.js';
 
 const app = express();
 
@@ -36,6 +37,7 @@ mongoose.connect(MONGO_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/student-auth', studentAuthRoutes);
+app.use('/api/specialist', specialistRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {
