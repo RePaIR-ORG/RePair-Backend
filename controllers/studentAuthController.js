@@ -113,3 +113,49 @@ export const getStudentTasks = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching tasks.' });
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   PATCH /api/student-auth/tasks/:taskId/complete
+// @desc    Mark a task as Completed by the authenticated student.
+//          Also recalculates and persists the student's overall taskCompletion %.
+// @access  Private (student JWT required)
+// ─────────────────────────────────────────────────────────────────────────────
+export const completeTask = async (req, res) => {
+  try {
+    const studentId = req.student.id;
+    const { taskId }  = req.params;
+
+    // Guard: valid 24-char hex id
+    if (!taskId || !/^[a-f\d]{24}$/i.test(taskId)) {
+      return res.status(400).json({ message: 'Invalid task ID.' });
+    }
+
+    // Only allow the student who owns the task to mark it complete
+    const task = await Task.findOneAndUpdate(
+      { _id: taskId, student: studentId },
+      { status: 'Completed' },
+      { new: true }
+    );
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found or access denied.' });
+    }
+
+    // ── Recalculate overall completion % for this student ─────────────────
+    const allTasks   = await Task.find({ student: studentId }).select('status').lean();
+    const total      = allTasks.length;
+    const completed  = allTasks.filter((t) => t.status === 'Completed').length;
+    const pct        = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    await Student.findByIdAndUpdate(studentId, { taskCompletion: `${pct}%` });
+
+    res.json({
+      message: 'Task marked as completed.',
+      task,
+      taskCompletion: `${pct}%`,
+    });
+  } catch (error) {
+    console.error('completeTask error:', error);
+    res.status(500).json({ message: 'Server error while completing task.' });
+  }
+};
