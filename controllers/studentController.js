@@ -1,4 +1,5 @@
 import Student from '../models/Student.js';
+import MoodHistory from '../models/MoodHistory.js';
 import bcrypt from 'bcryptjs';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,3 +198,64 @@ export const saveAssessmentResult = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   GET /api/students/:id/mood-history
+// @desc    Return the last 7 days of mood history for a student.
+//          Only accessible by the specialist who owns the student.
+//          Response: { history: [{ date, mood | null, createdAt | null }] }
+//          Array is ordered oldest → newest (7 slots, index 0 = 6 days ago).
+// @access  Private (specialist JWT)
+// ─────────────────────────────────────────────────────────────────────────────
+export const getStudentMoodHistory = async (req, res) => {
+  try {
+    // Ownership check — the student must belong to this specialist
+    const student = await Student.findOne({
+      _id: req.params.id,
+      specialist: req.user.id,
+    }).lean();
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    // Build the 7-day date range [today, yesterday, …, 6 days ago]
+    const today = new Date();
+    const dates = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    }); // descending
+
+    const earliest = dates[dates.length - 1];
+
+    // Fetch all entries in the window
+    const raw = await MoodHistory.find({
+      student: req.params.id,
+      date: { $gte: earliest },
+    })
+      .sort({ date: -1, createdAt: -1 })
+      .select('mood date createdAt')
+      .lean();
+
+    // Group: latest entry per date
+    const byDate = new Map();
+    for (const entry of raw) {
+      if (!byDate.has(entry.date)) byDate.set(entry.date, entry);
+    }
+
+    // Build 7-slot array oldest → newest for chronological display
+    const history = [...dates].reverse().map((date) => ({
+      date,
+      mood: byDate.get(date)?.mood ?? null,
+      createdAt: byDate.get(date)?.createdAt ?? null,
+    }));
+
+    res.json({ history });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid student ID.' });
+    }
+    console.error('getStudentMoodHistory error:', error);
+    res.status(500).json({ message: 'Server error while fetching mood history.' });
+  }
+};
