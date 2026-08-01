@@ -7,6 +7,7 @@ import studentRoutes from './routes/students.js';
 import studentAuthRoutes from './routes/studentAuth.js';
 import specialistRoutes from './routes/specialist.js';
 import transcribeRoutes from './routes/transcribe.js';
+import analyzeMoodRoutes from './routes/analyze-mood.js';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/student-auth', studentAuthRoutes);
 app.use('/api/specialist', specialistRoutes);
 app.use('/api/transcribe', transcribeRoutes);
+app.use('/api/analyze-mood', analyzeMoodRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {
