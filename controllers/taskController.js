@@ -1,5 +1,75 @@
 import Task from '../models/Task.js';
 import Student from '../models/Student.js';
+import Groq from 'groq-sdk';
+
+// ─── Groq Client (lazy singleton) ────────────────────────────────────────────
+let groqClient = null;
+function getGroq() {
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+  return groqClient;
+}
+
+// ─── Mood Generation ─────────────────────────────────────────────────────────
+/**
+ * Uses Groq LLM to determine the optimal student mood a given task is suited for.
+ * Returns one of: 'happy' | 'sad' | 'angry' | 'tired'
+ * Falls back gracefully to '' if anything goes wrong.
+ *
+ * @param {string} title        - Task title
+ * @param {string} description  - Task description
+ * @param {string} diagnosis    - Student's clinical diagnosis
+ * @returns {Promise<string>}
+ */
+const generateTaskMood = async (title, description, diagnosis) => {
+  try {
+    const groq = getGroq();
+
+    const taskContext = [
+      `Task Title: ${title}`,
+      description ? `Task Description: ${description}` : null,
+      diagnosis   ? `Student Diagnosis: ${diagnosis}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are an expert child psychologist and special education specialist. ' +
+            'A specialist is assigning a task to a child with special needs. ' +
+            'Your job is to identify which emotional/energy state the task is BEST suited for, ' +
+            'i.e., during which mood would this child most effectively and comfortably complete this task. ' +
+            'Consider the nature of the activity, the effort required, and the child\'s diagnosis. ' +
+            'Respond with ONLY one word — exactly one of: happy, sad, angry, tired. ' +
+            'No punctuation, no explanation, no extra words.',
+        },
+        {
+          role: 'user',
+          content: taskContext,
+        },
+      ],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.2,
+      max_tokens: 5,
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim().toLowerCase() || '';
+    const validMoods = ['happy', 'sad', 'angry', 'tired'];
+
+    for (const mood of validMoods) {
+      if (raw.includes(mood)) return mood;
+    }
+
+    return 'happy'; // safe default if LLM returns something unexpected
+  } catch (err) {
+    console.warn('[generateTaskMood] Groq call failed (non-fatal):', err?.message || err);
+    return ''; // don't block task creation
+  }
+};
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 /**
@@ -65,7 +135,7 @@ export const getTasks = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const createTask = async (req, res) => {
   try {
-    await resolveStudent(req.params.studentId, req.user.id);
+    const student = await resolveStudent(req.params.studentId, req.user.id);
 
     const { title, description } = req.body;
 
@@ -76,10 +146,19 @@ export const createTask = async (req, res) => {
     // req.file is populated by uploadTaskImage multer middleware if an image was attached
     const imageUrl = req.file ? req.file.path : '';
 
+    // ── Auto-generate mood using Groq LLM (non-blocking) ──────────────────────
+    // Determines which student mood this task is best suited for.
+    const mood = await generateTaskMood(
+      title.trim(),
+      description?.trim() || '',
+      student.diagnosis || '',
+    );
+
     const task = await Task.create({
       title: title.trim(),
       description: description?.trim() || '',
       imageUrl,
+      mood,          // AI-generated mood tag
       // status intentionally omitted — defaults to 'Pending' via schema
       student: req.params.studentId,
       specialist: req.user.id,
